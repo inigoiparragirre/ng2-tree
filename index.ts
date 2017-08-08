@@ -1,11 +1,16 @@
+import { TreeModel } from './src/treemodel';
+import { Ng2TreeSettings } from './src/ng2treesettings';
+import { RenamableNode } from './src/renamablenode';
+
 import {
-  TreeModel,
   TreeModelSettings,
-  Ng2TreeSettings,
-  RenamableNode,
   FoldingType,
   ChildrenLoadingFunction
 } from './src/tree.types';
+
+
+
+
 
 import { Tree } from './src/tree';
 

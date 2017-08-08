@@ -1,8 +1,6 @@
 # :herb: ng2-tree
 
-[![npm](https://img.shields.io/npm/v/ng2-tree.svg?style=flat-square)](https://www.npmjs.com/package/ng2-tree)
-[![Travis](https://img.shields.io/travis/valor-software/ng2-tree.svg?style=flat-square)](https://travis-ci.org/valor-software/ng2-tree)
-[![Codecov](https://img.shields.io/codecov/c/github/valor-software/ng2-tree.svg?style=flat-square)](https://codecov.io/github/valor-software/ng2-tree)
+ng2-tree is a simple [Angular 2](https://github.com/angular/angular) component for visualizing data that can be naturally represented as a tree.
 
 <!-- TOC -->
 
@@ -23,7 +21,6 @@
     - [NodeRenamedEvent](#noderenamedevent)
     - [NodeExpandedEvent](#nodeexpandedevent)
     - [NodeCollapsedEvent](#nodecollapsedevent)
-- [SystemJS](#systemjs)
 - [Changes that should be taken into account in order to migrate from __ng2-tree V1__ to __ng2-tree V2__](#changes-that-should-be-taken-into-account-in-order-to-migrate-from-__ng2-tree-v1__-to-__ng2-tree-v2__)
 - [:bulb: Want to help?](#bulb-want-to-help)
 
@@ -114,7 +111,7 @@ class MyComponent {
 Voila! That's pretty much it - enjoy :blush:
 
 ## :eyes: Demo
-Feel free to examine the [demo](https://valor-software.github.io/ng2-tree/index.html) and its [sources](src/demo) to find out how things are wired.
+Feel free to examine the [demo](https://valor-software.github.io/ng2-tree) and its [sources](demo/) to find out how things are wired.
 Also there is [another demo built with Angular CLI](https://github.com/rychkog/ng2-tree-demo).
 
 ## :wrench: API
@@ -279,8 +276,7 @@ Here is an example of its usage:
     'cssClasses': {
       'expanded': 'fa fa-caret-down fa-lg',
       'collapsed': 'fa fa-caret-right fa-lg',
-      'leaf:': 'fa fa-lg',
-      'empty': 'fa fa-caret-right disabled'
+      'leaf:': 'fa fa-lg'
     },
     'templates': {
       'node': '<i class="fa fa-folder-o fa-lg"></i>',
@@ -303,7 +299,6 @@ Here is an example of its usage:
   * `expanded` - String - It specifies a css class (or classes) for an item which represents expanded state of a node. The item is clickable and it transitions the node to the collapsed state
   * `collapsed` - String - It specifies a css class (or classes) for an item which represents collapsed state of a node. The item is clickable and it transitions the node to the expanded state
   * `leaf` - String - It specifies a css class (or classes) for an item which represents a node without an option to expand or collapse - in other words: a leaf node.
-  * `empty` - String - Node is considered empty when it has no children. Once this condition is satisfied - appropriate css class will be applied to the node.
 * `templates` - Object:
   * `node` - String - It specifies a html template which will be included to the left of the node's value.
   * `leaf` - String - It specifies a html template which will be included to the left of the leaf's value.
@@ -465,21 +460,6 @@ You can subscribe to `NodeCollapsedEvent` by attaching listener to `(nodeCollaps
 
 ```typescript
 {node: <Tree>{...}}
-```
-
-## SystemJS
-If you are using SystemJS, then you need
-
-```javascript
-System.config({
-    // ...
-    map: {
-      // ...
-      'ng2-tree': 'node_modules/ng2-tree/bundles/ng2-tree.umd.min.js',
-      // ...
-    },
-    // ...
-}
 ```
 
 ## Changes that should be taken into account in order to migrate from __ng2-tree V1__ to __ng2-tree V2__
