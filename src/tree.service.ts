@@ -7,7 +7,8 @@ import {
   NodeExpandedEvent,
   NodeCollapsedEvent
 } from './tree.events';
-import { RenamableNode } from './tree.types';
+
+import { RenamableNode } from './renamablenode';
 import { Tree } from './tree';
 import { Subject, Observable } from 'rxjs/Rx';
 import { Injectable, Inject, ElementRef } from '@angular/core';
@@ -53,9 +54,13 @@ export class TreeService {
   }
 
   public fireNodeSwitchFoldingType(tree: Tree): void {
+    if (tree.isLeaf()) {
+      return;
+    }
+
     if (tree.isNodeExpanded()) {
       this.fireNodeExpanded(tree);
-    } else if (tree.isNodeCollapsed()) {
+    } else {
       this.fireNodeCollapsed(tree);
     }
   }

@@ -1,5 +1,5 @@
 import { Tree } from './tree';
-import { RenamableNode } from './tree.types';
+import { RenamableNode } from './renamablenode';
 
 export class NodeEvent {
   public constructor(public node: Tree) {

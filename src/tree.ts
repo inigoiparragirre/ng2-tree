@@ -1,18 +1,9 @@
-import {
-  isEmpty,
-  trim,
-  has,
-  isFunction,
-  get,
-  omit,
-  size,
-  once,
-  includes
-} from './utils/fn.utils';
+import * as _ from 'lodash';
+import { Observable, Observer } from 'rxjs';
 
-import { Observable, Observer } from 'rxjs/Rx';
-import { TreeModel, RenamableNode, FoldingType, TreeStatus, TreeModelSettings, ChildrenLoadingFunction } from './tree.types';
-
+import { FoldingType, TreeStatus, TreeModelSettings, ChildrenLoadingFunction } from './tree.types';
+import { TreeModel } from './treemodel';
+import { RenamableNode } from './renamablenode';
 enum ChildrenLoadingState {
   NotStarted,
   Loading,
@@ -23,58 +14,8 @@ export class Tree {
   private _children: Tree[];
   private _loadChildren: ChildrenLoadingFunction;
   private _childrenLoadingState: ChildrenLoadingState = ChildrenLoadingState.NotStarted;
-
-  private _childrenAsyncOnce: () => Observable<Tree[]> = once(() => {
-    return new Observable((observer: Observer<Tree[]>) => {
-      setTimeout(() => {
-        this._childrenLoadingState = ChildrenLoadingState.Loading;
-        this._loadChildren((children: TreeModel[]) => {
-          this._children = (children || []).map((child: TreeModel) => new Tree(child, this));
-          this._childrenLoadingState = ChildrenLoadingState.Completed;
-          observer.next(this.children);
-          observer.complete();
-        });
-      });
-    });
-  });
-
   public node: TreeModel;
   public parent: Tree;
-
-  // STATIC METHODS ----------------------------------------------------------------------------------------------------
-
-  /**
-   * Check that value passed is not empty (it doesn't consist of only whitespace symbols).
-   * @param {string} value - A value that should be checked.
-   * @returns {boolean} - A flag indicating that value is empty or not.
-   * @static
-   */
-  public static isValueEmpty(value: string): boolean {
-    return isEmpty(trim(value));
-  }
-
-  /**
-   * Check whether a given value can be considered RenamableNode.
-   * @param {any} value - A value to check.
-   * @returns {boolean} - A flag indicating whether given value is Renamable node or not.
-   * @static
-   */
-  public static isRenamable(value: any): value is RenamableNode {
-    return (has(value, 'setName') && isFunction(value.setName))
-      && (has(value, 'toString') && isFunction(value.toString) && value.toString !== Object.toString);
-  }
-
-  private static cloneTreeShallow(origin: Tree): Tree {
-    const tree = new Tree(Object.assign({}, origin.node));
-    tree._children = origin._children;
-    return tree;
-  }
-
-  private static applyNewValueToRenamable(value: RenamableNode, newValue: string): RenamableNode {
-    const renamableValue: RenamableNode = Object.assign({}, value as RenamableNode);
-    renamableValue.setName(newValue);
-    return renamableValue;
-  }
 
   /**
    * Build an instance of Tree from an object implementing TreeModel interface.
@@ -83,19 +24,19 @@ export class Tree {
    * @param {boolean} [isBranch] - An option that makes a branch from created tree. Branch can have children.
    */
   public constructor(node: TreeModel, parent: Tree = null, isBranch: boolean = false) {
-    this.buildTreeFromModel(node, parent, isBranch || Array.isArray(node.children));
+    this.buildTreeFromModel(node, parent, isBranch);
   }
 
   private buildTreeFromModel(model: TreeModel, parent: Tree, isBranch: boolean): void {
     this.parent = parent;
-    this.node = Object.assign(omit(model, 'children') as TreeModel, {
-      settings: TreeModelSettings.merge(model, get(parent, 'node') as TreeModel)
+    this.node = _.extend(_.omit(model, 'children') as TreeModel, {
+      settings: TreeModelSettings.merge(model, _.get(parent, 'node') as TreeModel)
     }) as TreeModel;
 
-    if (isFunction(this.node.loadChildren)) {
+    if (_.isFunction(this.node.loadChildren)) {
       this._loadChildren = this.node.loadChildren;
     } else {
-      get(model, 'children', []).forEach((child: TreeModel, index: number) => {
+      _.forEach(_.get(model, 'children') as TreeModel[], (child: TreeModel, index: number) => {
         this._addChild(new Tree(child, this), index);
       });
     }
@@ -114,19 +55,10 @@ export class Tree {
     return (this._childrenLoadingState === ChildrenLoadingState.Loading);
   }
 
-  /**
-   * Check whether children of the node were loaded.
-   * Makes sense only for nodes that define `loadChildren` function.
-   * @returns {boolean} A flag indicating that children were loaded.
-   */
-  public childrenWereLoaded(): boolean {
-    return (this._childrenLoadingState === ChildrenLoadingState.Completed);
-  }
-
   private canLoadChildren(): boolean {
     return (this._childrenLoadingState === ChildrenLoadingState.NotStarted)
-      && (this.foldingType === FoldingType.Expanded)
-      && (!!this._loadChildren);
+     && (this.foldingType === FoldingType.Expanded)
+     && (!!this._loadChildren);
   }
 
   /**
@@ -153,10 +85,24 @@ export class Tree {
    */
   public get childrenAsync(): Observable<Tree[]> {
     if (this.canLoadChildren()) {
-      return this._childrenAsyncOnce();
+      return this.childrenAsyncOnce();
     }
     return Observable.of(this.children);
   }
+
+  private childrenAsyncOnce: () => Observable<Tree[]> = _.once(() => {
+    return new Observable((observer: Observer<Tree[]>) => {
+      setTimeout(() => {
+        this._childrenLoadingState = ChildrenLoadingState.Loading;
+        this._loadChildren((children: TreeModel[]) => {
+          this._children = _.map(children, (child: TreeModel) => new Tree(child, this));
+          this._childrenLoadingState = ChildrenLoadingState.Completed;
+          observer.next(this.children);
+          observer.complete();
+        });
+      });
+    });
+  });
 
   /**
    * Create a new node in the current tree.
@@ -167,15 +113,12 @@ export class Tree {
     const tree = new Tree({ value: '' }, null, isBranch);
     tree.markAsNew();
 
-    if (this.childrenShouldBeLoaded() && !(this.childrenAreBeingLoaded() || this.childrenWereLoaded())) {
-      return null;
-    }
     if (this.isLeaf()) {
       return this.addSibling(tree);
     } else {
       return this.addChild(tree);
     }
-  }
+  };
 
   /**
    * Get the value of the current node
@@ -194,11 +137,11 @@ export class Tree {
       return;
     }
 
-    const stringifiedValue = '' + value;
     if (Tree.isRenamable(this.value)) {
-      this.node.value = Tree.applyNewValueToRenamable(this.value as RenamableNode, stringifiedValue);
+      const newValue = typeof value === 'string' ? value : _.toString(value);
+      this.node.value = Tree.applyNewValueToRenamable(this.value as RenamableNode, newValue);
     } else {
-      this.node.value = Tree.isValueEmpty(stringifiedValue) ? this.node.value : stringifiedValue;
+      this.node.value = Tree.isValueEmpty(value as string) ? this.node.value : _.toString(value);
     }
   }
 
@@ -209,7 +152,7 @@ export class Tree {
    * @returns {Tree} A newly inserted sibling, or null if you are trying to make a sibling for the root.
    */
   public addSibling(sibling: Tree, position?: number): Tree {
-    if (Array.isArray(get(this.parent, 'children'))) {
+    if (_.isArray(_.get(this.parent, 'children'))) {
       return this.parent.addChild(sibling, position);
     }
     return null;
@@ -225,18 +168,13 @@ export class Tree {
     return this._addChild(Tree.cloneTreeShallow(child), position);
   }
 
-  private _addChild(child: Tree, position: number = size(this._children) || 0): Tree {
+  private _addChild(child: Tree, position: number = _.size(this._children) || 0): Tree {
     child.parent = this;
 
     if (Array.isArray(this._children)) {
       this._children.splice(position, 0, child);
     } else {
       this._children = [child];
-    }
-
-    this._setFoldingType();
-    if (this.isNodeCollapsed()) {
-      this.switchFoldingType();
     }
     return child;
   }
@@ -262,7 +200,7 @@ export class Tree {
    * @returns {number} The position inside a parent.
    */
   public get positionInParent(): number {
-    return this.parent.children ? this.parent.children.indexOf(this) : -1;
+    return _.indexOf(this.parent.children, this);
   }
 
   /**
@@ -270,7 +208,7 @@ export class Tree {
    * @returns {boolean} A flag indicating whether or not this tree is static.
    */
   public isStatic(): boolean {
-    return get(this.node.settings, 'static', false);
+    return _.get(this.node.settings, 'static', false);
   }
 
   /**
@@ -278,7 +216,7 @@ export class Tree {
    * @returns {boolean} A flag indicating whether or not this tree has a left menu.
    */
   public hasLeftMenu(): boolean {
-    return !get(this.node.settings, 'static', false) && get(this.node.settings, 'leftMenu', false);
+    return !_.get(this.node.settings, 'static', false) && _.get(this.node.settings, 'leftMenu', false);
   }
 
   /**
@@ -286,7 +224,7 @@ export class Tree {
    * @returns {boolean} A flag indicating whether or not this tree has a right menu.
    */
   public hasRightMenu(): boolean {
-    return !get(this.node.settings, 'static', false) && get(this.node.settings, 'rightMenu', false);
+    return !_.get(this.node.settings, 'static', false) && _.get(this.node.settings, 'rightMenu', false);
   }
 
   /**
@@ -306,14 +244,6 @@ export class Tree {
   }
 
   /**
-   * Check whether this tree has children.
-   * @returns {boolean} A flag indicating whether or not this tree has children.
-   */
-  public hasChildren(): boolean {
-    return !isEmpty(this._children) || this.childrenShouldBeLoaded();
-  }
-
-  /**
    * Check whether this tree is a root or not. The root is the tree (node) that doesn't have parent (or technically its parent is null).
    * @returns {boolean} A flag indicating whether or not this tree is the root.
    */
@@ -327,7 +257,7 @@ export class Tree {
    * @returns {boolean} A flag indicating whether or not provided tree is the sibling of the current one.
    */
   public hasSibling(tree: Tree): boolean {
-    return !this.isRoot() && includes(this.parent.children, tree);
+    return !this.isRoot() && _.includes(this.parent.children, tree);
   }
 
   /**
@@ -337,7 +267,7 @@ export class Tree {
    * @returns {boolean} A flag indicating whether provided tree is a child or not.
    */
   public hasChild(tree: Tree): boolean {
-    return includes(this._children, tree);
+    return _.includes(this._children, tree);
   }
 
   /**
@@ -346,15 +276,10 @@ export class Tree {
    * @param {Tree} tree - A tree that should be removed.
    */
   public removeChild(tree: Tree): void {
-    if (!this.hasChildren()) {
-      return;
-    }
-
-    const childIndex = this._children.findIndex((child: Tree) => child === tree);
+    const childIndex = _.findIndex(this._children, (child: Tree) => child === tree);
     if (childIndex >= 0) {
       this._children.splice(childIndex, 1);
     }
-    this._setFoldingType();
   }
 
   /**
@@ -373,7 +298,7 @@ export class Tree {
    * If node is a "Branch" and it is expanded, then by invoking current method state of the tree should be switched to "collapsed" and vice versa.
    */
   public switchFoldingType(): void {
-    if (this.isLeaf() || !this.hasChildren()) {
+    if (this.isLeaf()) {
       return;
     }
 
@@ -382,18 +307,10 @@ export class Tree {
 
   /**
    * Check that tree is expanded.
-   * @returns {boolean} A flag indicating whether current tree is expanded. Always returns false for the "Leaf" tree and for an empty tree.
+   * @returns {boolean} A flag indicating whether current tree is expanded. Always returns false for the "Leaf" tree.
    */
   public isNodeExpanded(): boolean {
     return this.foldingType === FoldingType.Expanded;
-  }
-
-  /**
-   * Check that tree is collapsed.
-   * @returns {boolean} A flag indicating whether current tree is collapsed. Always returns false for the "Leaf" tree and for an empty tree.
-   */
-  public isNodeCollapsed(): boolean {
-    return this.foldingType === FoldingType.Collapsed;
   }
 
   /**
@@ -402,10 +319,8 @@ export class Tree {
   private _setFoldingType(): void {
     if (this.childrenShouldBeLoaded()) {
       this.node._foldingType = FoldingType.Collapsed;
-    } else if (this._children && !isEmpty(this._children)) {
+    } else if (this._children) {
       this.node._foldingType = FoldingType.Expanded;
-    } else if (Array.isArray(this._children)) {
-      this.node._foldingType = FoldingType.Empty;
     } else {
       this.node._foldingType = FoldingType.Leaf;
     }
@@ -436,14 +351,12 @@ export class Tree {
     }
 
     if (this.node._foldingType === FoldingType.Collapsed) {
-      return get(this.node.settings, 'cssClasses.collapsed', null);
+       return _.get(this.node.settings, 'cssClasses.collapsed', null);
     } else if (this.node._foldingType === FoldingType.Expanded) {
-      return get(this.node.settings, 'cssClasses.expanded', null);
-    } else if (this.node._foldingType === FoldingType.Empty) {
-       return get(this.node.settings, 'cssClasses.empty', null);
+       return _.get(this.node.settings, 'cssClasses.expanded', null);
     }
 
-    return get(this.node.settings, 'cssClasses.leaf', null);
+    return _.get(this.node.settings, 'cssClasses.leaf', null);
   }
 
   /**
@@ -456,9 +369,9 @@ export class Tree {
 
   private getTemplateFromSettings(): string {
     if (this.isLeaf()) {
-      return get(this.node.settings, 'templates.leaf', '');
+      return _.get(this.node.settings, 'templates.leaf', '');
     } else {
-      return get(this.node.settings, 'templates.node', '');
+      return _.get(this.node.settings, 'templates.node', '');
     }
   }
 
@@ -468,7 +381,7 @@ export class Tree {
    */
   public get leftMenuTemplate(): string {
     if (this.hasLeftMenu()) {
-      return get(this.node.settings, 'templates.leftMenu', '<span></span>');
+      return _.get(this.node.settings, 'templates.leftMenu', '<span></span>');
     }
     return '';
   }
@@ -516,5 +429,40 @@ export class Tree {
    */
   public markAsModified(): void {
     this.node._status = TreeStatus.Modified;
+  }
+
+  // STATIC METHODS ----------------------------------------------------------------------------------------------------
+
+  /**
+   * Check that value passed is not empty (it doesn't consist of only whitespace symbols).
+   * @param {string} value - A value that should be checked.
+   * @returns {boolean} - A flag indicating that value is empty or not.
+   * @static
+   */
+  public static isValueEmpty(value: string): boolean {
+    return _.isEmpty(_.trim(value));
+  }
+
+  /**
+   * Check whether a given value can be considered RenamableNode.
+   * @param {any} value - A value to check.
+   * @returns {boolean} - A flag indicating whether given value is Renamable node or not.
+   * @static
+   */
+  public static isRenamable(value: any): value is RenamableNode {
+    return (_.has(value, 'setName') && _.isFunction(value.setName))
+      && (_.has(value, 'toString') && _.isFunction(value.toString) && value.toString !== Object.toString);
+  }
+
+  private static cloneTreeShallow(origin: Tree): Tree {
+    const tree = new Tree(_.clone(origin.node));
+    tree._children = origin._children;
+    return tree;
+  };
+
+  private static applyNewValueToRenamable(value: RenamableNode, newValue: string): RenamableNode {
+    const renamableValue: RenamableNode = _.merge({}, value as RenamableNode);
+    renamableValue.setName(newValue);
+    return renamableValue;
   }
 }

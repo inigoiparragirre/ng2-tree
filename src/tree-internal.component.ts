@@ -1,5 +1,5 @@
 import { Input, Component, OnInit, ElementRef, Inject } from '@angular/core';
-import * as TreeTypes from './tree.types';
+import { Ng2TreeSettings } from './ng2treesettings';
 import { Tree } from './tree';
 import { NodeMenuService } from './menu/node-menu.service';
 import { NodeMenuItemSelectedEvent, NodeMenuItemAction } from './menu/menu.events';
@@ -7,7 +7,7 @@ import { NodeEditableEvent, NodeEditableEventAction } from './editable/editable.
 import { TreeService } from './tree.service';
 import * as EventUtils from './utils/event.utils';
 import { NodeDraggableEvent } from './draggable/draggable.events';
-import { Observable } from 'rxjs/Rx';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'tree-internal',
@@ -44,9 +44,9 @@ import { Observable } from 'rxjs/Rx';
 
       <node-menu *ngIf="isRightMenuVisible" (menuItemSelected)="onMenuItemSelected($event)"></node-menu>
 
-      <ng-template [ngIf]="tree.isNodeExpanded()">
+      <template [ngIf]="tree.isNodeExpanded()">
         <tree-internal *ngFor="let child of tree.childrenAsync | async" [tree]="child"></tree-internal>
-      </ng-template>
+      </template>
     </li>
   </ul>
   `
@@ -56,11 +56,11 @@ export class TreeInternalComponent implements OnInit {
   public tree: Tree;
 
   @Input()
-  public settings: TreeTypes.Ng2TreeSettings;
+  public settings: Ng2TreeSettings;
 
-  public isSelected = false;
-  public isRightMenuVisible = false;
-  public isLeftMenuVisible = false;
+  public isSelected: boolean = false;
+  public isRightMenuVisible: boolean = false;
+  public isLeftMenuVisible: boolean = false;
 
   public constructor(@Inject(NodeMenuService) private nodeMenuService: NodeMenuService,
                      @Inject(TreeService) public treeService: TreeService,

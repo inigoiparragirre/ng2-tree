@@ -25,11 +25,6 @@ export class NodeMenuComponent implements OnInit, OnDestroy {
 
   public availableMenuItems: NodeMenuItem[] = [
     {
-      name: 'New tag',
-      action: NodeMenuItemAction.NewTag,
-      cssClass: 'new-tag'
-    },
-    {
       name: 'New folder',
       action: NodeMenuItemAction.NewFolder,
       cssClass: 'new-folder'
@@ -38,12 +33,12 @@ export class NodeMenuComponent implements OnInit, OnDestroy {
       name: 'Rename',
       action: NodeMenuItemAction.Rename,
       cssClass: 'rename'
-    },
-    {
-      name: 'Remove',
-      action: NodeMenuItemAction.Remove,
-      cssClass: 'remove'
     }
+    // {
+    //   name: 'Remove',
+    //   action: NodeMenuItemAction.Remove,
+    //   cssClass: 'remove'
+    // }
   ];
 
   private disposersForGlobalListeners: Function[] = [];
